@@ -1,0 +1,72 @@
+\documentclass{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage[ampersand]{easylist}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+
+\begin{document}
+\begin{titlepage}
+    \centering
+    \vfill
+    \vfill
+    {\bfseries\Large
+        TER --- Rapport intermédiaire\\
+        Visualisation rapide de modèles 3D complexes à partir de textures projectives de profondeur\\
+        Robin Chavignat\\
+    }    
+    \vfill
+    \vfill
+    \includegraphics[width=12cm]{rapport_img.png} % also works with logo.pdf
+    \vfill
+    \vfill
+\end{titlepage}
+\pagestyle{fancy}
+\section*{Problématique}
+En rendu 3D, la représentation classique des objets par maillage n'est pas toujours adaptée. Si
+un objet est suffisamment détaillé, le maillage devient très gros et n'est plus une façon efficace de représenter un
+objet.\\
+Dans un domaine ou il est acceptable d'utiliser une approximation de l'objet, on peut utiliser de nombreuses techniques
+permettant de reconstruire les détails d'un objet à partir d'un maillage simplifié: normal mapping, displacement mapping, etc\ldots\\
+Nous étudions dans le cadre de ce TER une technique dérivée du View-Dependant Texture Mapping (VDTM). Le VDTM a été décrit en premier par Debevec et
+al~\cite{Debevec98}, et consiste à reconstruire une vue d'un objet à partir d'un ensemble d'images de l'objet, appelées
+``points de vue'', et d'un maillage simplifié de l'objet.\\
+La technique étudiée est basée sur le VDTM, et a été introduite par Porquet et al~\cite{Porquet05}. Les points de vue
+consistent en des cartes de couleur, de profondeur, et de normales. Cette méthode a principalement 2 avantages par
+rapport au VDTM~: la simplicité du pré-traitement (il suffit d'acquérir les points de vue) et la suppression de certains
+artefacts causés par le blending entre plusieurs points de vue.\\
+La méthode est principalement implémentée au niveau du fragment shader. On utilise les 3 points de
+vue les plus proches de la caméra et pour chaque fragment, et on détermine le meilleur point de vue. L'objet est ensuite
+dessiné en utilisant le meilleur point de vue pour chaque fragment.\\
+La méthode permet d'obtenir des rendus proches de l'objet original avec un maillage très simplifié ($~0.1\%$ du nombre
+de faces initial). On observe cependant un manque de précision au niveau des ``bords'' de l'objet, et la méthode ne
+tient pas parfaitement compte des occlusions.\\
+L'implémentation est réalisée en C++ et GLSL.\\
+\pagebreak
+\section*{Travail effectué}
+\begin{easylist}[itemize]
+    & Etude de la technique VDTM
+    & Etude de la technique proposée par Porquet et al~\cite{Porquet05}
+    & Recherche de maillages suffisamment complexes sur lesquels appliquer la technique, et simplification
+    & Application OpenGL simple (textures, scenegraph, shaders, transformations, rendu offscreen, etc\dots)
+    & Import de maillages au format Wavefront OBJ
+    & Etude d'algorithmes de simplification de maillages~\cite{Hoppe96}~\cite{Garland97}
+    & Chargement et sauvegarde de textures
+    & Sauvegarde de points de vue
+\end{easylist}
+\pagebreak
+\section*{Planning prévisionnel}
+\begin{easylist}[itemize]
+    & Terminer l'implémentation de la technique décrite dans~\cite{Porquet05}
+    && Chargement de points de vue
+    && Shaders
+    && Ombres
+    & Tests et benchmarks de l'implémentation
+    & Recherches afin de tester la couverture du maillage par les points de vue
+    & Automatisation de la capture des points de vue
+\end{easylist}
+\pagebreak
+\bibliographystyle{plain-fr}
+\bibliography{rapport}
+\end{document}

@@ -1,0 +1,9 @@
+CMakeCache.txt
+CMakeFiles
+Makefile
+capture
+*.pdf
+*.bbl
+*.blg
+*.log
+*.aux
