@@ -68,6 +68,50 @@ Engine::Program buildShaderProgram(std::string const& vs_file, std::string const
     return p;
 }
 
+void save_pov(std::vector<Viewpoint>& povs,
+              Engine::SceneGraph& scene,
+              Engine::Object& buddha,
+              Engine::Window& window,
+              Engine::Camera<Engine::TransformEuler>& camera,
+              Engine::Program& colorProg, Engine::Program& normalProg,
+              Engine::FBO& fbo,
+              Engine::Texture& colorTex, Engine::Texture& normalTex, Engine::Texture& depthTex) {
+    // Render color and depth to texture
+    colorProg.use();
+    dynamic_cast<Engine::Uniform<glm::mat4>*>(colorProg.getUniform("m_camera"))->set(camera.world_to_camera());
+    dynamic_cast<Engine::Uniform<glm::mat3>*>(colorProg.getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    scene.render();
+    window.swapBuffers();
+
+    fbo.attach(Engine::FBO::Read, Engine::FBO::Color, colorTex);
+    std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
+
+    Engine::Image colorImg(Engine::Image::from_rgb(color, window.width(), window.height()));
+    Engine::Image depthImg(Engine::Image::from_greyscale<unsigned char>(Engine::FBO::readPixels<unsigned char>(Engine::FBO::DepthComponent, Engine::FBO::Ubyte, window.width(), window.height()),
+                           window.width(), window.height()));
+
+    // Render normals to texture
+    fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
+    normalProg.use();
+    dynamic_cast<Engine::Uniform<glm::mat4>*>(normalProg.getUniform("m_camera"))->set(camera.world_to_camera());
+    dynamic_cast<Engine::Uniform<glm::mat3>*>(normalProg.getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
+    buddha.set_program(&normalProg);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    scene.render();
+    window.swapBuffers();
+
+    fbo.attach(Engine::FBO::Read, Engine::FBO::Color, normalTex);
+    std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
+    Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
+    
+    povs.push_back(Viewpoint(colorImg, depthImg, normalImg));
+    
+    // Restore previous state
+    Engine::FBO::bind_default(Engine::FBO::Both);
+    buddha.set_program(&colorProg);
+}
+
 void bind_input_callbacks(Engine::Window& window, Engine::Camera<Engine::TransformEuler>& cam, Engine::TransformEuler& worldTransform) {
     window.registerKeyCallback(GLFW_KEY_ESCAPE, [&window] () { window.close(); });
     window.registerKeyCallback(GLFW_KEY_LEFT_CONTROL, [&cam] () { cam.translate_local(Engine::Direction::Down, 1); });
@@ -242,67 +286,7 @@ int main(int argc, char** argv) {
         fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, colorTex);
         fbo.attach(Engine::FBO::Draw, Engine::FBO::Depth, depthTex);
         assert(Engine::FBO::is_complete(Engine::FBO::Draw));
-
-        // Do render to texture
-        current_prog->use();
-        dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(camera.world_to_camera());
-        dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        scene.render();
-        window.swapBuffers();
-
-        fbo.attach(Engine::FBO::Read, Engine::FBO::Color, colorTex);
-        std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
-
-        Engine::Image colorImg(Engine::Image::from_rgb(color, window.width(), window.height()));
-        Engine::Image depthImg(Engine::Image::from_greyscale<unsigned char>(Engine::FBO::readPixels<unsigned char>(Engine::FBO::DepthComponent, Engine::FBO::Ubyte, window.width(), window.height()),
-                               window.width(), window.height()));
-        colorImg.save("colorTex.bmp", Engine::Image::Format::BmpRle);
-        depthImg.save("depthTex.bmp", Engine::Image::Format::BmpRle);
-
-        fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
-        current_prog = &prog_normals;
-        current_prog->use();
-        dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(camera.world_to_camera());
-        dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
-        buddha->set_program(current_prog);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        scene.render();
-        window.swapBuffers();
-
-        fbo.attach(Engine::FBO::Read, Engine::FBO::Color, normalTex);
-        std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
-
-        Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
-        normalImg.save("normalTex.bmp", Engine::Image::Format::BmpRle);
-
-        Viewpoint pov(colorImg, depthImg, normalImg);
-        
         Engine::FBO::bind_default(Engine::FBO::Both);
-        current_prog = &prog_phong;
-        buddha->set_program(current_prog);
-
-        // And for fun, load back the textures we just saved
-        Engine::Image teximg1("colorTex.bmp"), teximg2("normalTex.bmp");
-        Engine::Texture tex1 = teximg1.to_texture(), tex2 = teximg2.to_texture();
-
-        {
-            std::ofstream outFile;
-            outFile.open("img_archive", std::ios::out | std::ios::trunc | std::ios::binary);
-            boost::archive::binary_oarchive ar(outFile);
-            ar & pov;
-        }
-        {
-            std::ifstream inFile;
-            inFile.open("img_archive", std::ios::in | std::ios::binary);
-            boost::archive::binary_iarchive ar(inFile);
-            Viewpoint loaded_archive_img;
-            ar & loaded_archive_img;
-        }
-
-        pov.color() .save("colorTex-serialized.bmp",  Engine::Image::Format::BmpRle);
-        pov.depth() .save("depthTex-serialized.bmp",  Engine::Image::Format::BmpRle);
-        pov.normal().save("normalTex-serialized.bmp", Engine::Image::Format::BmpRle);
 
         // Finally, the render function
         window.setRenderCallback([&] () {
