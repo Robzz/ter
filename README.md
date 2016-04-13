@@ -13,3 +13,10 @@ Le dépôt est composé de plusieurs applications :
   * Quitter : &lt;ESC&gt;
 * vdtm : application de la technique de view-dependent texture mapping à partir
   de textures projectives de profondeur acquises par l'application `capture`
+
+## Dépendances
+
+* Dépendances du moteur
+* Boost
+  * serialize
+  * program_options
