@@ -7,7 +7,7 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include "gl_core_3_3.h"
 #include "debug.h"
-#include "mcgyver.h"
+#include "troll_engine.h"
 #include "window.h"
 #include "vbo.h"
 #include "vao.h"
