@@ -68,48 +68,33 @@ Engine::Program buildShaderProgram(std::string const& vs_file, std::string const
     return p;
 }
 
-void save_pov(std::vector<Viewpoint>& povs,
-              Engine::SceneGraph& scene,
-              Engine::IndexedObject& buddha,
-              Engine::Window& window,
-              Engine::Camera<Engine::TransformEuler>& camera,
-              Engine::Program& colorProg, Engine::Program& normalProg,
-              Engine::FBO& fbo,
-              Engine::Texture& colorTex, Engine::Texture& normalTex, Engine::Texture& depthTex) {
-    // Render color and depth to texture
-    colorProg.use();
-    dynamic_cast<Engine::Uniform<glm::mat4>*>(colorProg.getUniform("m_camera"))->set(camera.world_to_camera());
-    dynamic_cast<Engine::Uniform<glm::mat3>*>(colorProg.getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    scene.render();
-    window.swapBuffers();
+void bind_input_callbacks(Engine::Window& window, Engine::Camera<Engine::TransformEuler>& cam, Engine::TransformEuler& worldTransform) {
+    window.registerKeyCallback(GLFW_KEY_ESCAPE, [&window] () { window.close(); });
+    window.registerKeyCallback(GLFW_KEY_LEFT_CONTROL, [&cam] () { cam.translate_local(Engine::Direction::Down, 1); });
+    window.registerKeyCallback(' ', [&cam] () { cam.translate_local(Engine::Direction::Up, 1); });
+    window.registerKeyCallback('W', [&cam] () { cam.translate_local(Engine::Direction::Front, 1); });
+    window.registerKeyCallback('A', [&cam] () { cam.translate_local(Engine::Direction::Left, 1); });
+    window.registerKeyCallback('S', [&cam] () { cam.translate_local(Engine::Direction::Back, 1); });
+    window.registerKeyCallback('D', [&cam] () { cam.translate_local(Engine::Direction::Right, 1); });
+    window.registerKeyCallback('Q', [&cam] () { cam.rotate_local(Engine::Axis::Z, -0.15); });
+    window.registerKeyCallback('E', [&cam] () { cam.rotate_local(Engine::Axis::Z, 0.15); });
 
-    fbo.attach(Engine::FBO::Read, Engine::FBO::Color, colorTex);
-    std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
+    window.registerMousePosCallback([&worldTransform] (double x, double y) {
+            static float prev_x = 0, prev_y = 0;
+            float xoffset = x - prev_x, yoffset = y - prev_y;
+            prev_x = x; prev_y = y;
+            const float f = 0.01;
+            xoffset *= f;
+            yoffset *= f;
+            worldTransform.rotate_local(Engine::Axis::Y, xoffset);
+            worldTransform.rotate_local(Engine::Axis::X, yoffset);
+        });
 
-    Engine::Image colorImg(Engine::Image::from_rgb(color, window.width(), window.height()));
-    Engine::Image depthImg(Engine::Image::from_greyscale<unsigned char>(Engine::FBO::readPixels<unsigned char>(Engine::FBO::DepthComponent, Engine::FBO::Ubyte, window.width(), window.height()),
-                           window.width(), window.height()));
-
-    // Render normals to texture
-    fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
-    normalProg.use();
-    dynamic_cast<Engine::Uniform<glm::mat4>*>(normalProg.getUniform("m_camera"))->set(camera.world_to_camera());
-    dynamic_cast<Engine::Uniform<glm::mat3>*>(normalProg.getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
-    buddha.set_program(&normalProg);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    scene.render();
-    window.swapBuffers();
-
-    fbo.attach(Engine::FBO::Read, Engine::FBO::Color, normalTex);
-    std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
-    Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
-    
-    povs.push_back(Viewpoint(colorImg, depthImg, normalImg));
-    
-    // Restore previous state
-    Engine::FBO::bind_default(Engine::FBO::Both);
-    buddha.set_program(&colorProg);
+    window.registerMouseButtonCallback([&cam] (int button, int action, int mods) {
+            std::cout << ((action == GLFW_PRESS) ? "Pressed " : "Released ") << ((button == GLFW_MOUSE_BUTTON_1) ? "left" :
+                                                                                 (button == GLFW_MOUSE_BUTTON_2) ? "right" : 
+                                                                                 (button == GLFW_MOUSE_BUTTON_3) ? "middle" : "unknown") << " mouse button." << std::endl;
+        });
 }
 
 int main(int argc, char** argv) {
@@ -187,6 +172,14 @@ int main(int argc, char** argv) {
         dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_normals.getUniform("m_proj"))->set(projMatrix);
         //dynamic_cast<Uniform<glm::mat4>*>(prog_normals.getUniform("m_world"))->set(worldMatrix);
 
+        window.setResizeCallback([&] (int w, int h) {
+            // TODO : wrap the GL call away
+            glViewport(0, 0, w, h);
+            projMatrix = glm::perspective<float>(45, static_cast<float>(w)/static_cast<float>(h), 0.1, 1000);
+            dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_phong.getUniform("m_proj"))->set(projMatrix);
+            dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_normals.getUniform("m_proj"))->set(projMatrix);
+        });
+
         // Setup vertex attributes
         Engine::VAO vao_phong, vao_normals;
         GLuint posIndex    = static_cast<unsigned int>(prog_phong.getAttributeLocation("v_position"));
@@ -232,6 +225,9 @@ int main(int argc, char** argv) {
         glClearColor(0.4f, 0.4f, 0.4f, 1.f);
         glClearDepth(1.0f);
 
+        // Install input callbacks
+        bind_input_callbacks(window, camera, worldTransform);
+
         // Setup render to texture
         Engine::Texture colorTex, depthTex, normalTex;
         colorTex.texData (GL_RGB, GL_RGB, GL_UNSIGNED_BYTE, window.width(), window.height(), nullptr);
@@ -246,53 +242,67 @@ int main(int argc, char** argv) {
         fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, colorTex);
         fbo.attach(Engine::FBO::Draw, Engine::FBO::Depth, depthTex);
         assert(Engine::FBO::is_complete(Engine::FBO::Draw));
-        Engine::FBO::bind_default(Engine::FBO::Both);
 
-        // Install input callbacks
-        std::vector<Viewpoint> povs;
-        window.registerKeyCallback(GLFW_KEY_ESCAPE, [&window] () { window.close(); });
-        window.registerKeyCallback('R', [&camera] () { camera.translate_local(Engine::Direction::Down, 1); });
-        window.registerKeyCallback('F', [&camera] () { camera.translate_local(Engine::Direction::Up, 1); });
-        window.registerKeyCallback('W', [&camera] () { camera.translate_local(Engine::Direction::Front, 1); });
-        window.registerKeyCallback('A', [&camera] () { camera.translate_local(Engine::Direction::Left, 1); });
-        window.registerKeyCallback('S', [&camera] () { camera.translate_local(Engine::Direction::Back, 1); });
-        window.registerKeyCallback('D', [&camera] () { camera.translate_local(Engine::Direction::Right, 1); });
-        window.registerKeyCallback('Q', [&] () { save_pov(povs, scene, *buddha, window,
-                                                          camera, prog_phong, prog_normals, fbo,
-                                                          colorTex, normalTex, depthTex); });
-        window.registerKeyCallback('E', [&povs] () {
-                if(povs.size() == 0) {
-                    std::cerr << "I won't save this, no viewpoints have been captured." << std::endl;
-                }
-                else {
-                    std::ofstream outFile;
-                    outFile.open("pov_archive", std::ios::trunc | std::ios::binary);
-                    boost::archive::binary_oarchive ar(outFile);
-                    ar & povs;
-                }
-            });
-        window.registerMousePosCallback([&worldTransform] (double x, double y) {
-                static float prev_x = 0, prev_y = 0;
-                float xoffset = x - prev_x, yoffset = y - prev_y;
-                prev_x = x; prev_y = y;
-                const float f = 0.01;
-                xoffset *= f;
-                yoffset *= f;
-                worldTransform.rotate_local(Engine::Axis::Y, xoffset);
-                worldTransform.rotate_local(Engine::Axis::X, yoffset);
-            });
-        window.registerMouseButtonCallback([&camera] (int button, int action, int mods) {
-                std::cout << ((action == GLFW_PRESS) ? "Pressed " : "Released ") << ((button == GLFW_MOUSE_BUTTON_1) ? "left" :
-                                                                                     (button == GLFW_MOUSE_BUTTON_2) ? "right" : 
-                                                                                     (button == GLFW_MOUSE_BUTTON_3) ? "middle" : "unknown") << " mouse button." << std::endl;
-            });
-        window.setResizeCallback([&] (int w, int h) {
-            // TODO : wrap the GL call away
-            glViewport(0, 0, w, h);
-            projMatrix = glm::perspective<float>(45, static_cast<float>(w)/static_cast<float>(h), 0.1, 1000);
-            dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_phong.getUniform("m_proj"))->set(projMatrix);
-            dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_normals.getUniform("m_proj"))->set(projMatrix);
-        });
+        // Do render to texture
+        current_prog->use();
+        dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(camera.world_to_camera());
+        dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        scene.render();
+        window.swapBuffers();
+
+        fbo.attach(Engine::FBO::Read, Engine::FBO::Color, colorTex);
+        std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
+
+        Engine::Image colorImg(Engine::Image::from_rgb(color, window.width(), window.height()));
+        Engine::Image depthImg(Engine::Image::from_greyscale<unsigned char>(Engine::FBO::readPixels<unsigned char>(Engine::FBO::DepthComponent, Engine::FBO::Ubyte, window.width(), window.height()),
+                               window.width(), window.height()));
+        colorImg.save("colorTex.bmp", Engine::Image::Format::BmpRle);
+        depthImg.save("depthTex.bmp", Engine::Image::Format::BmpRle);
+
+        fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
+        current_prog = &prog_normals;
+        current_prog->use();
+        dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(camera.world_to_camera());
+        dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
+        buddha->set_program(current_prog);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        scene.render();
+        window.swapBuffers();
+
+        fbo.attach(Engine::FBO::Read, Engine::FBO::Color, normalTex);
+        std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
+
+        Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
+        normalImg.save("normalTex.bmp", Engine::Image::Format::BmpRle);
+
+        Viewpoint pov(colorImg, depthImg, normalImg);
+        
+        Engine::FBO::bind_default(Engine::FBO::Both);
+        current_prog = &prog_phong;
+        buddha->set_program(current_prog);
+
+        // And for fun, load back the textures we just saved
+        Engine::Image teximg1("colorTex.bmp"), teximg2("normalTex.bmp");
+        Engine::Texture tex1 = teximg1.to_texture(), tex2 = teximg2.to_texture();
+
+        {
+            std::ofstream outFile;
+            outFile.open("img_archive", std::ios::out | std::ios::trunc | std::ios::binary);
+            boost::archive::binary_oarchive ar(outFile);
+            ar & pov;
+        }
+        {
+            std::ifstream inFile;
+            inFile.open("img_archive", std::ios::in | std::ios::binary);
+            boost::archive::binary_iarchive ar(inFile);
+            Viewpoint loaded_archive_img;
+            ar & loaded_archive_img;
+        }
+
+        pov.color() .save("colorTex-serialized.bmp",  Engine::Image::Format::BmpRle);
+        pov.depth() .save("depthTex-serialized.bmp",  Engine::Image::Format::BmpRle);
+        pov.normal().save("normalTex-serialized.bmp", Engine::Image::Format::BmpRle);
 
         // Finally, the render function
         window.setRenderCallback([&] () {
