@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
         std::cout << "Usage : " << argv[0] << "<point-of-view-archive> <low-res-mesh>" << std::endl;
         return 1;
     }
-    Engine::mcgyver_init(argc, argv);
+    Engine::engine_init(argc, argv);
     Engine::Obj obj = Engine::ObjReader().file(argv[2]).read();
     Engine::Mesh* mesh = obj.get_group("default");
 

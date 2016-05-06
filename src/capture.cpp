@@ -25,7 +25,6 @@
 
 typedef std::pair<std::string, Engine::ProgramBuilder::UniformType> UniformDescriptor;
 
-void init_libs(int argc, char** argv);
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms);
 void bind_input_callbacks(Engine::Window& window, Engine::Camera<Engine::TransformEuler>& cam, Engine::TransformEuler& worldTransform);
 
@@ -102,7 +101,7 @@ void save_pov(std::vector<Viewpoint>& povs,
 }
 
 int main(int argc, char** argv) {
-    Engine::mcgyver_init(argc, argv);
+    Engine::engine_init(argc, argv);
     Engine::Obj obj = Engine::ObjReader().file("assets/buddha_11k.obj").read();
     Engine::Mesh* mesh = obj.get_group("default");
 
