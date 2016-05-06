@@ -105,7 +105,7 @@ void save_pov(std::vector<Viewpoint>& povs,
     std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
     Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
     
-    povs.push_back(Viewpoint(colorImg, depthImg, normalImg));
+    povs.push_back(Viewpoint(camera.world_to_camera(), colorImg, depthImg, normalImg));
     
     // Restore previous state
     Engine::FBO::bind_default(Engine::FBO::Both);
@@ -302,6 +302,10 @@ int main(int argc, char** argv) {
             buddha->set_transform(worldMatrix);
             dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(cameraMatrix);
             dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(worldMatrix)));
+
+            glm::vec4 pos_cam = glm::inverse(cameraMatrix * worldMatrix) * glm::vec4(camera.transform().position(), 1.f);
+
+            std::cout << "Camera pos : " << pos_cam << std::endl;
 
             // TODO : this too
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

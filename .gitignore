@@ -7,3 +7,9 @@ capture
 *.blg
 *.log
 *.aux
+*.bmp
+*.cmake
+.ycm*
+capture
+vdtm
+pov_archive

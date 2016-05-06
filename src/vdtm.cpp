@@ -24,6 +24,23 @@
 #include "pov.h"
 
 typedef std::pair<std::string, Engine::ProgramBuilder::UniformType> UniformDescriptor;
+struct PovTextures {
+    glm::mat4 position;
+    Engine::Texture const& colors;
+    Engine::Texture const& normals;
+    Engine::Texture const& depth;
+
+    PovTextures(glm::mat4 const& pos, Engine::Texture const& col, Engine::Texture const& norm, Engine::Texture const& dep) noexcept :
+        position(pos),
+        colors(col),
+        normals(norm),
+        depth(dep)
+    { }
+
+    private:
+    PovTextures();
+    void operator=(PovTextures const&);
+};
 
 void init_libs(int argc, char** argv);
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms);
@@ -98,8 +115,12 @@ void bind_input_callbacks(Engine::Window& window, Engine::Camera<Engine::Transfo
 }
 
 int main(int argc, char** argv) {
+    if(argc != 3) {
+        std::cout << "Usage : " << argv[0] << "<point-of-view-archive> <low-res-mesh>" << std::endl;
+        return 1;
+    }
     Engine::mcgyver_init(argc, argv);
-    Engine::Obj obj = Engine::ObjReader().file("assets/buddha_11k.obj").read();
+    Engine::Obj obj = Engine::ObjReader().file(argv[2]).read();
     Engine::Mesh* mesh = obj.get_group("default");
 
     std::cout << "Got " << obj.groups().size() << std::endl;
@@ -195,6 +216,24 @@ int main(int argc, char** argv) {
         vao_normals.enableVertexAttribArray(normalIndex);
         vao_normals.vertexAttribPointer(normals, normalIndex, 3, 0, 0);
 
+        // Load textures from viewpoint archive
+        std::ifstream inFile;
+        inFile.open(argv[1], std::ios_base::binary | std::ios_base::in);
+        boost::archive::binary_iarchive ar(inFile);
+        std::vector<Viewpoint> povs;
+        ar >> povs;
+        std::cout << "Loaded " << povs.size() << " viewpoints from " << argv[1] << std::endl;
+
+        std::vector<PovTextures> pov_textures;
+        std::vector<Engine::Texture> textures;
+        for(auto& pov: povs) {
+            textures.push_back(pov.color().to_texture());
+            textures.push_back(pov.normal().to_texture());
+            textures.push_back(pov.depth().to_texture());
+            pov_textures.push_back(PovTextures(pov.position(), textures[textures.size()-3], textures[textures.size()-2], textures[textures.size()-1]));
+                                              
+        }
+
         // Fill the scene
         Engine::Camera<Engine::TransformEuler> camera;
         //camera.look_at(glm::vec3(0, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
@@ -227,82 +266,6 @@ int main(int argc, char** argv) {
 
         // Install input callbacks
         bind_input_callbacks(window, camera, worldTransform);
-
-        // Setup render to texture
-        Engine::Texture colorTex, depthTex, normalTex;
-        colorTex.texData (GL_RGB, GL_RGB, GL_UNSIGNED_BYTE, window.width(), window.height(), nullptr);
-        depthTex.texData (GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT, window.width(), window.height(), nullptr);
-        normalTex.texData(GL_RGB, GL_RGB, GL_UNSIGNED_BYTE, window.width(), window.height(), nullptr);
-        Engine::Texture::unbind();
-        Engine::FBO fbo;
-        fbo.bind(Engine::FBO::Both);   
-        glViewport(0,0,1280,720);
-        GLenum drawBuffers[1] = {GL_COLOR_ATTACHMENT0};
-        glDrawBuffers(1, drawBuffers);
-        fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, colorTex);
-        fbo.attach(Engine::FBO::Draw, Engine::FBO::Depth, depthTex);
-        assert(Engine::FBO::is_complete(Engine::FBO::Draw));
-
-        // Do render to texture
-        current_prog->use();
-        dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(camera.world_to_camera());
-        dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        scene.render();
-        window.swapBuffers();
-
-        fbo.attach(Engine::FBO::Read, Engine::FBO::Color, colorTex);
-        std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
-
-        Engine::Image colorImg(Engine::Image::from_rgb(color, window.width(), window.height()));
-        Engine::Image depthImg(Engine::Image::from_greyscale<unsigned char>(Engine::FBO::readPixels<unsigned char>(Engine::FBO::DepthComponent, Engine::FBO::Ubyte, window.width(), window.height()),
-                               window.width(), window.height()));
-        colorImg.save("colorTex.bmp", Engine::Image::Format::BmpRle);
-        depthImg.save("depthTex.bmp", Engine::Image::Format::BmpRle);
-
-        fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
-        current_prog = &prog_normals;
-        current_prog->use();
-        dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(camera.world_to_camera());
-        dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
-        buddha->set_program(current_prog);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        scene.render();
-        window.swapBuffers();
-
-        fbo.attach(Engine::FBO::Read, Engine::FBO::Color, normalTex);
-        std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
-
-        Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
-        normalImg.save("normalTex.bmp", Engine::Image::Format::BmpRle);
-
-        Viewpoint pov(colorImg, depthImg, normalImg);
-        
-        Engine::FBO::bind_default(Engine::FBO::Both);
-        current_prog = &prog_phong;
-        buddha->set_program(current_prog);
-
-        // And for fun, load back the textures we just saved
-        Engine::Image teximg1("colorTex.bmp"), teximg2("normalTex.bmp");
-        Engine::Texture tex1 = teximg1.to_texture(), tex2 = teximg2.to_texture();
-
-        {
-            std::ofstream outFile;
-            outFile.open("img_archive", std::ios::out | std::ios::trunc | std::ios::binary);
-            boost::archive::binary_oarchive ar(outFile);
-            ar & pov;
-        }
-        {
-            std::ifstream inFile;
-            inFile.open("img_archive", std::ios::in | std::ios::binary);
-            boost::archive::binary_iarchive ar(inFile);
-            Viewpoint loaded_archive_img;
-            ar & loaded_archive_img;
-        }
-
-        pov.color() .save("colorTex-serialized.bmp",  Engine::Image::Format::BmpRle);
-        pov.depth() .save("depthTex-serialized.bmp",  Engine::Image::Format::BmpRle);
-        pov.normal().save("normalTex-serialized.bmp", Engine::Image::Format::BmpRle);
 
         // Finally, the render function
         window.setRenderCallback([&] () {
