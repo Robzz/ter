@@ -29,17 +29,6 @@ void init_libs(int argc, char** argv);
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms);
 void bind_input_callbacks(Engine::Window& window, Engine::Camera<Engine::TransformEuler>& cam, Engine::TransformEuler& worldTransform);
 
-// TODO : wrap this in the lib
-// Initialize GLEW and GLFW
-void init_libs(int argc, char** argv) {
-    if (!glfwInit()) {
-        std::cerr << "Error : cannot initialize GLFW" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    glfwSetErrorCallback([] (int error, const char* description) { std::cerr << description << std::endl; });
-}
-
 // Build the shader program used in the project
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms) {
     std::ifstream fvs(vs_file);

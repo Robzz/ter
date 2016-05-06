@@ -46,17 +46,6 @@ void init_libs(int argc, char** argv);
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms);
 void bind_input_callbacks(Engine::Window& window, Engine::Camera<Engine::TransformEuler>& cam, Engine::TransformEuler& worldTransform);
 
-// TODO : wrap this in the lib
-// Initialize GLEW and GLFW
-void init_libs(int argc, char** argv) {
-    if (!glfwInit()) {
-        std::cerr << "Error : cannot initialize GLFW" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    glfwSetErrorCallback([] (int error, const char* description) { std::cerr << description << std::endl; });
-}
-
 // Build the shader program used in the project
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms) {
     std::ifstream fvs(vs_file);
@@ -173,48 +162,41 @@ int main(int argc, char** argv) {
         Engine::TransformEuler worldTransform;
         glm::vec3 lightPosition(5, 15, -15);
 
-        std::vector<UniformDescriptor> uniforms_p1, uniforms_p2;
+        std::vector<UniformDescriptor> uniforms;
 
-        uniforms_p1.push_back(UniformDescriptor("m_proj", Engine::ProgramBuilder::mat4));
-        uniforms_p1.push_back(UniformDescriptor("m_world", Engine::ProgramBuilder::mat4));
-        uniforms_p1.push_back(UniformDescriptor("m_camera", Engine::ProgramBuilder::mat4));
-        uniforms_p1.push_back(UniformDescriptor("m_normalTransform", Engine::ProgramBuilder::mat3));
-        uniforms_p1.push_back(UniformDescriptor("ambient_intensity", Engine::ProgramBuilder::float_));
-        Engine::Program prog_phong(buildShaderProgram("shaders/per_fragment.vs", "shaders/per_fragment.fs", uniforms_p1));
-        dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_phong.getUniform("m_proj"))->set(projMatrix);
-        dynamic_cast<Engine::Uniform<float>*>(prog_phong.getUniform("ambient_intensity"))->set(0.2);
-        //dynamic_cast<Uniform<glm::mat4>*>(prog_phong.getUniform("m_world"))->set(worldMatrix);
-
-        uniforms_p2.push_back(UniformDescriptor("m_camera",Engine::ProgramBuilder::mat4));
-        uniforms_p2.push_back(UniformDescriptor("m_world",Engine::ProgramBuilder::mat4));
-        uniforms_p2.push_back(UniformDescriptor("m_proj",Engine::ProgramBuilder::mat4));
-        uniforms_p2.push_back(UniformDescriptor("m_normalTransform",Engine::ProgramBuilder::mat3));
-        Engine::Program prog_normals(buildShaderProgram("shaders/normals.vs", "shaders/normals.fs", uniforms_p2));
-        dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_normals.getUniform("m_proj"))->set(projMatrix);
-        //dynamic_cast<Uniform<glm::mat4>*>(prog_normals.getUniform("m_world"))->set(worldMatrix);
+        uniforms.push_back(UniformDescriptor("m_objToCamera",        Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("m_cameraToObj",        Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("m_viewpoint1",         Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("m_viewpoint2",         Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("m_viewpoint3",         Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("m_viewpoint_inverse1", Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("m_viewpoint_inverse2", Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("m_viewpoint_inverse3", Engine::ProgramBuilder::mat4));
+        uniforms.push_back(UniformDescriptor("colorTex1",            Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("colorTex2",            Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("colorTex3",            Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("normalTex1",           Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("normalTex2",           Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("normalTex3",           Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("depthTex1",            Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("depthTex2",            Engine::ProgramBuilder::int_));
+        uniforms.push_back(UniformDescriptor("depthTex3",            Engine::ProgramBuilder::int_));
+        Engine::Program prog_vdtm(buildShaderProgram("shaders/vdtm.vs", "shaders/vdtm.fs", uniforms));
 
         window.setResizeCallback([&] (int w, int h) {
             // TODO : wrap the GL call away
             glViewport(0, 0, w, h);
             projMatrix = glm::perspective<float>(45, static_cast<float>(w)/static_cast<float>(h), 0.1, 1000);
-            dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_phong.getUniform("m_proj"))->set(projMatrix);
-            dynamic_cast<Engine::Uniform<glm::mat4>*>(prog_normals.getUniform("m_proj"))->set(projMatrix);
         });
 
         // Setup vertex attributes
-        Engine::VAO vao_phong, vao_normals;
-        GLuint posIndex    = static_cast<unsigned int>(prog_phong.getAttributeLocation("v_position"));
-        GLuint normalIndex = static_cast<unsigned int>(prog_phong.getAttributeLocation("v_normal"));
-        vao_phong.enableVertexAttribArray(posIndex);
-        vao_phong.vertexAttribPointer(coords, posIndex, 4, 0, 0);
-        vao_phong.enableVertexAttribArray(normalIndex);
-        vao_phong.vertexAttribPointer(normals, normalIndex, 3, 0, 0);
-        posIndex    = static_cast<unsigned int>(prog_normals.getAttributeLocation("v_position"));
-        normalIndex = static_cast<unsigned int>(prog_normals.getAttributeLocation("v_normal"));
-        vao_normals.enableVertexAttribArray(posIndex);
-        vao_normals.vertexAttribPointer(coords, posIndex, 4, 0, 0);
-        vao_normals.enableVertexAttribArray(normalIndex);
-        vao_normals.vertexAttribPointer(normals, normalIndex, 3, 0, 0);
+        Engine::VAO vao_vdtm, vao_normals;
+        GLuint posIndex    = static_cast<unsigned int>(prog_vdtm.getAttributeLocation("v_position"));
+        GLuint normalIndex = static_cast<unsigned int>(prog_vdtm.getAttributeLocation("v_normal"));
+        vao_vdtm.enableVertexAttribArray(posIndex);
+        vao_vdtm.vertexAttribPointer(coords, posIndex, 4, 0, 0);
+        vao_vdtm.enableVertexAttribArray(normalIndex);
+        vao_vdtm.vertexAttribPointer(normals, normalIndex, 3, 0, 0);
 
         // Load textures from viewpoint archive
         std::ifstream inFile;
@@ -239,19 +221,13 @@ int main(int argc, char** argv) {
         //camera.look_at(glm::vec3(0, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
         camera.translate_local(Engine::Direction::Back, 1);
         Engine::SceneGraph scene;
-        Engine::IndexedObject* buddha = new Engine::IndexedObject(glm::mat4(1), &prog_phong, &indices, &vao_phong,
+        Engine::IndexedObject* buddha = new Engine::IndexedObject(glm::mat4(1), &prog_vdtm, &indices, &vao_vdtm,
                                                                   mesh->get_attribute<unsigned int>("indices")->size(), Engine::Texture::noTexture(),
                                                                   GL_UNSIGNED_INT);
         scene.addChild(buddha);
 
-        Engine::Program* current_prog = &prog_phong;
-        Engine::VAO* current_vao = &vao_phong;
-        window.registerKeyCallback('P', [&] () {
-            current_prog = (current_prog == &prog_phong) ? &prog_normals : &prog_phong;
-            current_vao = (current_prog == &prog_phong) ? &vao_normals : &vao_phong;
-            buddha->set_program(current_prog);
-            buddha->set_vao(current_vao);
-        });
+        Engine::Program* current_prog = &prog_vdtm;
+        Engine::VAO* current_vao = &vao_vdtm;
         
         // TODO : this must go
         // Some more GL related stuff
