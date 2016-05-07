@@ -25,13 +25,15 @@
 
 typedef std::pair<std::string, Engine::ProgramBuilder::UniformType> UniformDescriptor;
 struct PovTextures {
-    glm::mat4 position;
-    Engine::Texture const& colors;
-    Engine::Texture const& normals;
-    Engine::Texture const& depth;
+    glm::mat4 matrix;
+    glm::vec3 position;
+    Engine::Texture const* colors;
+    Engine::Texture const* normals;
+    Engine::Texture const* depth;
 
-    PovTextures(glm::mat4 const& pos, Engine::Texture const& col, Engine::Texture const& norm, Engine::Texture const& dep) noexcept :
-        position(pos),
+    PovTextures(glm::mat4 const& mat, Engine::Texture const* col, Engine::Texture const* norm, Engine::Texture const* dep) :
+        matrix(mat),
+        position((mat * glm::vec4(0,0,0,1)).xyz()),
         colors(col),
         normals(norm),
         depth(dep)
@@ -39,7 +41,6 @@ struct PovTextures {
 
     private:
     PovTextures();
-    void operator=(PovTextures const&);
 };
 
 void init_libs(int argc, char** argv);
@@ -136,11 +137,10 @@ int main(int argc, char** argv) {
         }
 
         //ogl_CheckExtensions();
-        #ifdef DEBUG
-            glEnable(GL_DEBUG_OUTPUT);
-            glDebugMessageCallback(&gl_cb, nullptr);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, true);
-        #endif
+        std::cout << "GL_KHR_DEBUG enabled" << std::endl;
+        glEnable(GL_DEBUG_OUTPUT);
+        glDebugMessageCallback(&gl_cb, nullptr);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, true);
 
         FreeImage_SetOutputMessage([] (FREE_IMAGE_FORMAT fif, const char *message) {
                 if(fif != FIF_UNKNOWN) {
@@ -165,19 +165,19 @@ int main(int argc, char** argv) {
         std::vector<UniformDescriptor> uniforms;
 
         uniforms.push_back(UniformDescriptor("m_objToCamera",        Engine::ProgramBuilder::mat4));
-        uniforms.push_back(UniformDescriptor("m_cameraToObj",        Engine::ProgramBuilder::mat4));
+        //uniforms.push_back(UniformDescriptor("m_cameraToObj",        Engine::ProgramBuilder::mat4));
         uniforms.push_back(UniformDescriptor("m_viewpoint1",         Engine::ProgramBuilder::mat4));
         uniforms.push_back(UniformDescriptor("m_viewpoint2",         Engine::ProgramBuilder::mat4));
         uniforms.push_back(UniformDescriptor("m_viewpoint3",         Engine::ProgramBuilder::mat4));
-        uniforms.push_back(UniformDescriptor("m_viewpoint_inverse1", Engine::ProgramBuilder::mat4));
-        uniforms.push_back(UniformDescriptor("m_viewpoint_inverse2", Engine::ProgramBuilder::mat4));
-        uniforms.push_back(UniformDescriptor("m_viewpoint_inverse3", Engine::ProgramBuilder::mat4));
+        //uniforms.push_back(UniformDescriptor("m_viewpoint_inverse1", Engine::ProgramBuilder::mat4));
+        //uniforms.push_back(UniformDescriptor("m_viewpoint_inverse2", Engine::ProgramBuilder::mat4));
+        //uniforms.push_back(UniformDescriptor("m_viewpoint_inverse3", Engine::ProgramBuilder::mat4));
         uniforms.push_back(UniformDescriptor("colorTex1",            Engine::ProgramBuilder::int_));
         uniforms.push_back(UniformDescriptor("colorTex2",            Engine::ProgramBuilder::int_));
         uniforms.push_back(UniformDescriptor("colorTex3",            Engine::ProgramBuilder::int_));
-        uniforms.push_back(UniformDescriptor("normalTex1",           Engine::ProgramBuilder::int_));
-        uniforms.push_back(UniformDescriptor("normalTex2",           Engine::ProgramBuilder::int_));
-        uniforms.push_back(UniformDescriptor("normalTex3",           Engine::ProgramBuilder::int_));
+        //uniforms.push_back(UniformDescriptor("normalTex1",           Engine::ProgramBuilder::int_));
+        //uniforms.push_back(UniformDescriptor("normalTex2",           Engine::ProgramBuilder::int_));
+        //uniforms.push_back(UniformDescriptor("normalTex3",           Engine::ProgramBuilder::int_));
         uniforms.push_back(UniformDescriptor("depthTex1",            Engine::ProgramBuilder::int_));
         uniforms.push_back(UniformDescriptor("depthTex2",            Engine::ProgramBuilder::int_));
         uniforms.push_back(UniformDescriptor("depthTex3",            Engine::ProgramBuilder::int_));
@@ -195,8 +195,8 @@ int main(int argc, char** argv) {
         GLuint normalIndex = static_cast<unsigned int>(prog_vdtm.getAttributeLocation("v_normal"));
         vao_vdtm.enableVertexAttribArray(posIndex);
         vao_vdtm.vertexAttribPointer(coords, posIndex, 4, 0, 0);
-        vao_vdtm.enableVertexAttribArray(normalIndex);
-        vao_vdtm.vertexAttribPointer(normals, normalIndex, 3, 0, 0);
+        //vao_vdtm.enableVertexAttribArray(normalIndex);
+        //vao_vdtm.vertexAttribPointer(normals, normalIndex, 3, 0, 0);
 
         // Load textures from viewpoint archive
         std::ifstream inFile;
@@ -207,14 +207,22 @@ int main(int argc, char** argv) {
         std::cout << "Loaded " << povs.size() << " viewpoints from " << argv[1] << std::endl;
 
         std::vector<PovTextures> pov_textures;
-        std::vector<Engine::Texture> textures;
+        std::vector<Engine::Texture*> textures;
         for(auto& pov: povs) {
             textures.push_back(pov.color().to_texture());
             textures.push_back(pov.normal().to_texture());
-            textures.push_back(pov.depth().to_texture());
+            textures.push_back(pov.depth().to_depth_texture());
             pov_textures.push_back(PovTextures(pov.position(), textures[textures.size()-3], textures[textures.size()-2], textures[textures.size()-1]));
                                               
         }
+        // DEBUG : checking the textures
+        std::cout << "Testing textures" << std::endl;
+        for(auto& pov: pov_textures) {
+            //pov.colors->bind();
+            //pov.normals->bind();
+            pov.depth->bind();
+        }
+        std::cout << "Testing done" << std::endl;
 
         // Fill the scene
         Engine::Camera<Engine::TransformEuler> camera;
@@ -249,8 +257,34 @@ int main(int argc, char** argv) {
                       worldMatrix  = worldTransform.matrix();
             current_prog->use();
             buddha->set_transform(worldMatrix);
-            dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(cameraMatrix);
-            dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(worldMatrix)));
+            // Find 3 closest viewpoints
+            glm::vec3 cameraPos = camera.transform().position();
+            std::vector<PovTextures const*> pt;
+            for(auto& it: pov_textures)
+                pt.push_back(&it);
+            std::sort(pt.begin(), pt.end(), [&] (PovTextures const* p1, PovTextures const* p2) { return glm::distance(p1->position, cameraPos) < glm::distance(p2->position, cameraPos); });
+            dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_objToCamera"))->set(cameraMatrix * worldMatrix);
+            dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_viewpoint1"))->set(pov_textures[0].matrix);
+            dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_viewpoint2"))->set(pov_textures[0].matrix);
+            dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_viewpoint3"))->set(pov_textures[0].matrix);
+            glActiveTexture(GL_TEXTURE0);
+            //pov_textures[0].colors->bind();
+            dynamic_cast<Engine::Uniform<GLint>*>(current_prog->getUniform("colorTex1"))->set(0);
+            glActiveTexture(GL_TEXTURE0 + 1);
+            //pov_textures[1].colors->bind();
+            dynamic_cast<Engine::Uniform<GLint>*>(current_prog->getUniform("colorTex2"))->set(1);
+            glActiveTexture(GL_TEXTURE0 + 2);
+            //pov_textures[2].colors->bind();
+            dynamic_cast<Engine::Uniform<GLint>*>(current_prog->getUniform("colorTex3"))->set(2);
+            glActiveTexture(GL_TEXTURE0 + 3);
+            pov_textures[3].depth->bind();
+            dynamic_cast<Engine::Uniform<GLint>*>(current_prog->getUniform("depthTex1"))->set(3);
+            glActiveTexture(GL_TEXTURE0 + 4);
+            pov_textures[4].depth->bind();
+            dynamic_cast<Engine::Uniform<GLint>*>(current_prog->getUniform("depthTex2"))->set(4);
+            glActiveTexture(GL_TEXTURE0 + 5);
+            pov_textures[5].depth->bind();
+            dynamic_cast<Engine::Uniform<GLint>*>(current_prog->getUniform("depthTex3"))->set(5);
 
             // TODO : this too
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -260,6 +294,8 @@ int main(int argc, char** argv) {
         window.mainLoop();
 
         delete mesh;
+        for(auto tex: textures)
+            delete tex;
     }
 
         // TODO : yep, this too

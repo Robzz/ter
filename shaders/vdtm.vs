@@ -20,7 +20,9 @@ out vec3 vs_normal;
 
 void main() {
     vs_pos_object_space = vec3(v_position);
-    vs_pos_camera_space = vec3(m_objToCamera * v_position);
+    gl_Position = m_objToCamera * v_position;
     vs_normal = v_normal;
-    vec3 p1 = ;
+    pov1 = (m_viewpoint1 * v_position).xy;
+    pov2 = (m_viewpoint2 * v_position).xy;
+    pov3 = (m_viewpoint3 * v_position).xy;
 }

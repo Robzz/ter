@@ -93,7 +93,7 @@ void save_pov(std::vector<Viewpoint>& povs,
     std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
     Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
     
-    povs.push_back(Viewpoint(camera.world_to_camera(), colorImg, depthImg, normalImg));
+    povs.push_back(Viewpoint(glm::inverse(camera.world_to_camera()), colorImg, depthImg, normalImg));
     
     // Restore previous state
     Engine::FBO::bind_default(Engine::FBO::Both);
