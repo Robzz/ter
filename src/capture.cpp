@@ -15,7 +15,6 @@
 #include "scenegraph.h"
 #include "camera.h"
 #include "texture.h"
-#include "planet.h"
 #include "obj.h"
 #include "fbo.h"
 #include "image.h"
@@ -60,7 +59,8 @@ void save_pov(std::vector<Viewpoint>& povs,
               Engine::SceneGraph& scene,
               Engine::IndexedObject& buddha,
               Engine::Window& window,
-              Engine::Camera<Engine::TransformEuler>& camera,
+              Engine::Camera<Engine::TransformMat>& camera,
+              glm::mat4 const& projMatrix, 
               Engine::Program& colorProg, Engine::Program& normalProg,
               Engine::FBO& fbo,
               Engine::Texture& colorTex, Engine::Texture& normalTex, Engine::Texture& depthTex) {
@@ -93,7 +93,7 @@ void save_pov(std::vector<Viewpoint>& povs,
     std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
     Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
     
-    povs.push_back(Viewpoint(glm::inverse(camera.world_to_camera()), colorImg, depthImg, normalImg));
+    povs.push_back(Viewpoint(glm::inverse(projMatrix * camera.world_to_camera()), colorImg, depthImg, normalImg));
     
     // Restore previous state
     Engine::FBO::bind_default(Engine::FBO::Both);
@@ -191,12 +191,12 @@ int main(int argc, char** argv) {
         vao_normals.vertexAttribPointer(normals, normalIndex, 3, 0, 0);
 
         // Fill the scene
-        Engine::Camera<Engine::TransformEuler> camera;
+        Engine::Camera<Engine::TransformMat> camera;
         //camera.look_at(glm::vec3(0, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
         camera.translate_local(Engine::Direction::Back, 1);
         Engine::SceneGraph scene;
         Engine::IndexedObject* buddha = new Engine::IndexedObject(glm::mat4(1), &prog_phong, &indices, &vao_phong,
-                                                                  mesh->get_attribute<unsigned int>("indices")->size(), Engine::Texture::noTexture(),
+                                                                  mesh->get_attribute<unsigned int>("indices")->size(), nullptr,
                                                                   GL_UNSIGNED_INT);
         scene.addChild(buddha);
 
@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
         window.registerKeyCallback('S', [&camera] () { camera.translate_local(Engine::Direction::Back, 1); });
         window.registerKeyCallback('D', [&camera] () { camera.translate_local(Engine::Direction::Right, 1); });
         window.registerKeyCallback('Q', [&] () { save_pov(povs, scene, *buddha, window,
-                                                          camera, prog_phong, prog_normals, fbo,
+                                                          camera, projMatrix, prog_phong, prog_normals, fbo,
                                                           colorTex, normalTex, depthTex); });
         window.registerKeyCallback('E', [&povs] () {
                 if(povs.size() == 0) {
@@ -259,15 +259,15 @@ int main(int argc, char** argv) {
                     ar & povs;
                 }
             });
-        window.registerMousePosCallback([&worldTransform] (double x, double y) {
+        window.registerMousePosCallback([&camera] (double x, double y) {
                 static float prev_x = 0, prev_y = 0;
                 float xoffset = x - prev_x, yoffset = y - prev_y;
                 prev_x = x; prev_y = y;
                 const float f = 0.01;
                 xoffset *= f;
                 yoffset *= f;
-                worldTransform.rotate_local(Engine::Axis::Y, xoffset);
-                worldTransform.rotate_local(Engine::Axis::X, yoffset);
+                camera.rotate(glm::vec3(0, 1, 0), xoffset);
+                camera.rotate(glm::vec3(1, 0, 0), yoffset);
             });
         window.registerMouseButtonCallback([&camera] (int button, int action, int mods) {
                 std::cout << ((action == GLFW_PRESS) ? "Pressed " : "Released ") << ((button == GLFW_MOUSE_BUTTON_1) ? "left" :
