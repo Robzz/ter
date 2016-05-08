@@ -25,7 +25,15 @@
 typedef std::pair<std::string, Engine::ProgramBuilder::UniformType> UniformDescriptor;
 
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms);
-void bind_input_callbacks(Engine::Window& window, Engine::Camera<Engine::TransformEuler>& cam, Engine::TransformEuler& worldTransform);
+void save_pov(std::vector<Viewpoint>& povs,
+              Engine::SceneGraph& scene,
+              Engine::IndexedObject& buddha,
+              Engine::Window& window,
+              Engine::Camera<Engine::TransformMat>& camera,
+              glm::mat4 const& projOrig, 
+              Engine::Program& colorProg, Engine::Program& normalProg,
+              Engine::FBO& fbo,
+              Engine::Texture& colorTex, Engine::Texture& normalTex, Engine::Texture& depthTex);
 
 // Build the shader program used in the project
 Engine::Program buildShaderProgram(std::string const& vs_file, std::string const& fs_file, std::vector<UniformDescriptor> const& uniforms) {
@@ -60,11 +68,13 @@ void save_pov(std::vector<Viewpoint>& povs,
               Engine::IndexedObject& buddha,
               Engine::Window& window,
               Engine::Camera<Engine::TransformMat>& camera,
-              glm::mat4 const& projMatrix, 
+              glm::mat4 const& projOrig, 
               Engine::Program& colorProg, Engine::Program& normalProg,
               Engine::FBO& fbo,
               Engine::Texture& colorTex, Engine::Texture& normalTex, Engine::Texture& depthTex) {
     // Render color and depth to texture
+    glm::mat4 projMatrix = glm::perspective(45., 1., 0.1, 1000.);
+    glViewport(0, 0, 512, 512);
     colorProg.use();
     dynamic_cast<Engine::Uniform<glm::mat4>*>(colorProg.getUniform("m_camera"))->set(camera.world_to_camera());
     dynamic_cast<Engine::Uniform<glm::mat3>*>(colorProg.getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(1)));
@@ -73,11 +83,11 @@ void save_pov(std::vector<Viewpoint>& povs,
     window.swapBuffers();
 
     fbo.attach(Engine::FBO::Read, Engine::FBO::Color, colorTex);
-    std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
+    std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, 512, 512));
 
-    Engine::Image colorImg(Engine::Image::from_rgb(color, window.width(), window.height()));
-    Engine::Image depthImg(Engine::Image::from_greyscale<unsigned char>(Engine::FBO::readPixels<unsigned char>(Engine::FBO::DepthComponent, Engine::FBO::Ubyte, window.width(), window.height()),
-                           window.width(), window.height()));
+    Engine::Image colorImg(Engine::Image::from_rgb(color, 512, 512));
+    Engine::Image depthImg(Engine::Image::from_greyscale<unsigned short>(Engine::FBO::readPixels<unsigned short>(Engine::FBO::DepthComponent, Engine::FBO::Ushort, 512, 512),
+                           512, 512));
 
     // Render normals to texture
     fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
@@ -90,30 +100,25 @@ void save_pov(std::vector<Viewpoint>& povs,
     window.swapBuffers();
 
     fbo.attach(Engine::FBO::Read, Engine::FBO::Color, normalTex);
-    std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, window.width(), window.height()));
-    Engine::Image normalImg(Engine::Image::from_rgb(normal, window.width(), window.height()));
+    std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, 512, 512));
+    Engine::Image normalImg(Engine::Image::from_rgb(normal, 512, 512));
     
-    povs.push_back(Viewpoint(glm::inverse(projMatrix * camera.world_to_camera()), colorImg, depthImg, normalImg));
+    povs.push_back(Viewpoint(projMatrix * camera.world_to_camera(), camera.transform().position(), colorImg, depthImg, normalImg));
     
     // Restore previous state
     Engine::FBO::bind_default(Engine::FBO::Both);
     buddha.set_program(&colorProg);
+    glViewport(0, 0, window.width(), window.height());
 }
 
 int main(int argc, char** argv) {
     Engine::engine_init(argc, argv);
-    Engine::Obj obj = Engine::ObjReader().file("assets/buddha_11k.obj").read();
-    Engine::Mesh* mesh = obj.get_group("default");
-
-    std::cout << "Got " << obj.groups().size() << std::endl;
-    for(auto& p: obj.groups()) {
-        std::cout << "Group " << p.first << " :" << std::endl
-                  << p.second->get_attribute<glm::vec4>("vertices")->size()   << " vertices"  << std::endl
-                  << p.second->get_attribute<glm::vec2>("texCoords")->size()  << " texCoords" << std::endl
-                  << p.second->get_attribute<glm::vec3>("normals")->size()    << " normals"   << std::endl
-                  << p.second->get_attribute<unsigned int>("indices")->size() << " indices"   << std::endl;
+    if(argc != 2) {
+        std::cout << "Usage : " << argv[0] << " <mesh>" << std::endl;
+        return 1;
     }
-
+    Engine::Obj obj = Engine::ObjReader().file(argv[1]).read();
+    Engine::Mesh* mesh = obj.get_group("default");
     {
         // First, create the window
         Engine::WindowBuilder wb;
@@ -222,9 +227,9 @@ int main(int argc, char** argv) {
 
         // Setup render to texture
         Engine::Texture colorTex, depthTex, normalTex;
-        colorTex.texData (GL_RGB, GL_RGB, GL_UNSIGNED_BYTE, window.width(), window.height(), nullptr);
-        depthTex.texData (GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT, window.width(), window.height(), nullptr);
-        normalTex.texData(GL_RGB, GL_RGB, GL_UNSIGNED_BYTE, window.width(), window.height(), nullptr);
+        colorTex.texData (GL_RGB, GL_RGB, GL_UNSIGNED_BYTE, 512, 512, nullptr);
+        depthTex.texData (GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_FLOAT, 512, 512, nullptr);
+        normalTex.texData(GL_RGB, GL_RGB, GL_UNSIGNED_BYTE, 512, 512, nullptr);
         Engine::Texture::unbind();
         Engine::FBO fbo;
         fbo.bind(Engine::FBO::Both);   
@@ -291,7 +296,7 @@ int main(int argc, char** argv) {
             dynamic_cast<Engine::Uniform<glm::mat4>*>(current_prog->getUniform("m_camera"))->set(cameraMatrix);
             dynamic_cast<Engine::Uniform<glm::mat3>*>(current_prog->getUniform("m_normalTransform"))->set(glm::inverseTranspose(glm::mat3(worldMatrix)));
 
-            glm::vec4 pos_cam = glm::inverse(cameraMatrix * worldMatrix) * glm::vec4(camera.transform().position(), 1.f);
+            glm::vec3 pos_cam = camera.transform().position();
 
             std::cout << "Camera pos : " << pos_cam << std::endl;
 

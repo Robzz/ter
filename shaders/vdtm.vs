@@ -15,15 +15,20 @@ out PovTexCoords {
     vec2 pov3;
 };
 out vec4 vs_pos_object_space;
-out vec4 vs_pos_camera_space;
 out vec3 vs_normal;
+
+vec2 pos_to_uv(vec4 p, mat4 m) {
+    p = m * p;
+    p = p / p.w;
+    //return p.xy;
+    return (p.xy)/2 + 0.5;
+}
 
 void main() {
     vs_pos_object_space = v_position;
-    vs_pos_camera_space = m_objToCamera * v_position;
     gl_Position = m_camToClip * m_objToCamera * v_position;
     vs_normal = v_normal;
-    pov1 = (m_viewpoint1 * v_position).xy;
-    pov2 = (m_viewpoint2 * v_position).xy;
-    pov3 = (m_viewpoint3 * v_position).xy;
+    pov1 = pos_to_uv(v_position, m_viewpoint1);
+    pov2 = pos_to_uv(v_position, m_viewpoint2);
+    pov3 = pos_to_uv(v_position, m_viewpoint3);
 }

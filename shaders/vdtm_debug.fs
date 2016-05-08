@@ -1,7 +1,6 @@
 #version 330
 
 in vec4 vs_pos_object_space;
-in vec4 vs_pos_camera_space;
 in vec3 vs_normal;
 
 in PovTexCoords {
@@ -10,46 +9,34 @@ in PovTexCoords {
     vec2 pov3;
 };
 
-uniform mat4 m_viewpoint1, m_viewpoint2, m_viewpoint3; 
 uniform mat4 m_viewpoint_inverse1, m_viewpoint_inverse2, m_viewpoint_inverse3; 
-uniform sampler2D depthTex1, depthTex2, depthTex3;
+uniform sampler2D depthTex1, depthTex2, depthTex3, colorTex1, colorTex2, colorTex3;
 
-vec2 clip_to_NDC(vec2 v) {
-    // NOTE : this should NOT be hardcoded, the camera to NDC conversion must
-    // use the parameters passed to glViewport. These are constant in this app,
-    // so we afford the easy way
-    return v/2 +0.5;
+vec4 uv_to_obj(sampler2D depthTex, vec2 uv, mat4 m_inv) {
+    float z = texture2D(depthTex, uv).r;
+    vec4 v = m_inv * (vec4(uv, z, 1)*2 - 1);
+    v = v / v.w;
+    return v;
 }
 
 void main() {
-    float zPov1 = texture2D(depthTex1, clip_to_NDC(pov1)).r,
-          zPov2 = texture2D(depthTex2, clip_to_NDC(pov2)).r,
-          zPov3 = texture2D(depthTex3, clip_to_NDC(pov3)).r;
-    vec4 p1_h = m_viewpoint1 * vec4(pov1, zPov1, 1),
-         p2_h = m_viewpoint2 * vec4(pov2, zPov2, 1),
-         p3_h = m_viewpoint3 * vec4(pov3, zPov3, 1);
-    vec3 p1 = (p1_h / p1_h.w).xyz,
-         p2 = (p2_h / p2_h.w).xyz,
-         p3 = (p3_h / p3_h.w).xyz,
-         pos_obj = (vs_pos_object_space / vs_pos_object_space.w).xyz;
-    if(length(pos_obj - p1) < length(pos_obj - p2)) {
-        if(length(pos_obj - p1) < length(pos_obj - p3)) {
-            gl_FragColor = vec4(1, 0, 0, 1);
-            gl_FragDepth = zPov1;
-        }
-        else {
-            gl_FragColor = vec4(0, 0, 1, 1);
-            gl_FragDepth = zPov3;
-        }
+    vec4 p1 = uv_to_obj(depthTex1, pov1, m_viewpoint_inverse1),
+         p2 = uv_to_obj(depthTex2, pov2, m_viewpoint_inverse2),
+         p3 = uv_to_obj(depthTex3, pov3, m_viewpoint_inverse3);
+    float d1 = distance(p1, vs_pos_object_space),
+          d2 = distance(p2, vs_pos_object_space),
+          d3 = distance(p3, vs_pos_object_space);
+    if(d1 < d2 && d1 < d3) {
+        gl_FragColor = vec4(p1.z, 0, 0, 1);
+        gl_FragDepth = p1.z;
+    }
+    else if(d2 < d1 && d2 < d3) {
+        gl_FragColor = vec4(0, p2.z, 0, 1);
+        gl_FragDepth = p2.z;
     }
     else {
-        if(length(pos_obj - p2) < length(pos_obj - p3)) {
-            gl_FragColor = vec4(0, 1, 0, 1);
-            gl_FragDepth = zPov2;
-        }
-        else {
-            gl_FragColor = vec4(0, 0, 1, 1);
-            gl_FragDepth = zPov3;
-        }
+        float m = max(max(d1,d2),d3);
+        gl_FragColor = vec4(0, 0, p3.z, 1);
+        gl_FragDepth = p3.z;
     }
 }
