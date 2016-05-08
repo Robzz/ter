@@ -38,10 +38,10 @@ int main(int argc, char** argv) {
     int i = 0;
     for(auto& pov: povs) {
         std::cout << "POV number " << i << std::endl << pov.position() << std::endl;
-        std::string suffix = std::to_string(i) + ".bmp";
-        pov.color().save(colortex_prefix + suffix, Engine::Image::Format::BmpRle);
-        pov.normal().save(normaltex_prefix + suffix, Engine::Image::Format::BmpRle);
-        pov.depth().save(depthtex_prefix + suffix, Engine::Image::Format::BmpRle);
+        std::string suffix = std::to_string(i) + ".png";
+        pov.color().save(colortex_prefix + suffix, Engine::Image::Format::Png);
+        pov.normal().save(normaltex_prefix + suffix, Engine::Image::Format::Png);
+        pov.depth().save(depthtex_prefix + suffix, Engine::Image::Format::Png);
         ++i;
     }
 

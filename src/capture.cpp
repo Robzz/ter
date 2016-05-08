@@ -86,8 +86,7 @@ void save_pov(std::vector<Viewpoint>& povs,
     std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, 512, 512));
 
     Engine::Image colorImg(Engine::Image::from_rgb(color, 512, 512));
-    Engine::Image depthImg(Engine::Image::from_greyscale<unsigned short>(Engine::FBO::readPixels<unsigned short>(Engine::FBO::DepthComponent, Engine::FBO::Ushort, 512, 512),
-                           512, 512));
+    Engine::Image depthImg(Engine::Image::from_greyscale(Engine::FBO::readPixels<unsigned short>(Engine::FBO::DepthComponent, Engine::FBO::Ushort, 512, 512), 512, 512));
 
     // Render normals to texture
     fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
