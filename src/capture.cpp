@@ -73,7 +73,7 @@ void save_pov(std::vector<Viewpoint>& povs,
               Engine::FBO& fbo,
               Engine::Texture& colorTex, Engine::Texture& normalTex, Engine::Texture& depthTex) {
     // Render color and depth to texture
-    glm::mat4 projMatrix = glm::perspective(45., 1., 0.1, 1000.);
+    glm::mat4 projMatrix = glm::perspective(45., 1., 1., 100.);
     glViewport(0, 0, 512, 512);
     colorProg.use();
     dynamic_cast<Engine::Uniform<glm::mat4>*>(colorProg.getUniform("m_camera"))->set(camera.world_to_camera());
@@ -85,8 +85,8 @@ void save_pov(std::vector<Viewpoint>& povs,
     fbo.attach(Engine::FBO::Read, Engine::FBO::Color, colorTex);
     std::vector<unsigned char> color(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, 512, 512));
 
-    Engine::Image colorImg(Engine::Image::from_rgb(color, 512, 512));
-    Engine::Image depthImg(Engine::Image::from_greyscale(Engine::FBO::readPixels<unsigned short>(Engine::FBO::DepthComponent, Engine::FBO::Ushort, 512, 512), 512, 512));
+    Engine::Image colorImg(Engine::Image::from_rgb(color, 512, 512, true));
+    Engine::Image depthImg(Engine::Image::from_greyscale(Engine::FBO::readPixels<unsigned short>(Engine::FBO::DepthComponent, Engine::FBO::Ushort, 512, 512), 512, 512, true));
 
     // Render normals to texture
     fbo.attach(Engine::FBO::Draw, Engine::FBO::Color, normalTex);
@@ -102,7 +102,7 @@ void save_pov(std::vector<Viewpoint>& povs,
     std::vector<unsigned char> normal(Engine::FBO::readPixels<unsigned char>(Engine::FBO::Bgr, Engine::FBO::Ubyte, 512, 512));
     Engine::Image normalImg(Engine::Image::from_rgb(normal, 512, 512));
     
-    povs.push_back(Viewpoint(projMatrix * camera.world_to_camera(), camera.transform().position(), colorImg, depthImg, normalImg));
+    povs.push_back(Viewpoint(camera.world_to_camera(), camera.transform().position(), colorImg, depthImg, normalImg));
     
     // Restore previous state
     Engine::FBO::bind_default(Engine::FBO::Both);

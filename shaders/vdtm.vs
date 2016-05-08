@@ -20,8 +20,9 @@ out vec3 vs_normal;
 vec2 pos_to_uv(vec4 p, mat4 m) {
     p = m * p;
     p = p / p.w;
-    //return p.xy;
-    return (p.xy)/2 + 0.5;
+    vec2 r = p.xy;
+    r = r/2 + 0.5;
+    return r;
 }
 
 void main() {
