@@ -1,0 +1,9 @@
+\contentsline {chapter}{\numberline {1}Pr\IeC {\'e}ambule}{3}
+\contentsline {chapter}{\numberline {2}Probl\IeC {\'e}matique}{4}
+\contentsline {section}{\numberline {2.1}Introduction}{4}
+\contentsline {section}{\numberline {2.2}Formulation du probl\IeC {\`e}me}{4}
+\contentsline {chapter}{\numberline {3}Technique}{5}
+\contentsline {section}{\numberline {3.1}Vue d'ensemble}{5}
+\contentsline {section}{\numberline {3.2}Donn\IeC {\'e}es}{5}
+\contentsline {section}{\numberline {3.3}Reprojection}{6}
+\contentsline {section}{\numberline {3.4}Algorithme}{6}

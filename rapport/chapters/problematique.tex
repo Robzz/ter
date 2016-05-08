@@ -1,0 +1,19 @@
+\section{Introduction}
+Il existe plusieurs façons de représenter un objet en 3D. La représentation la plus commune en rendu 3D et la représentation
+par maillage. Un maillage consiste en la donnée d'un ensemble de polygones délimitant la surface de l'objet. On s'intéressera dans ce TER aux maillages
+triangulaires, c'est à dire les maillages ne contenant que des triangles. En effet, tout polygone de 4 sommets ou plus pouvant être décomposé en un
+ensemble de triangles, il est donc facile de se ramener au cas étudié.\\
+
+\section{Formulation du problème}
+La représentation par maillage souffre de plusieurs défauts. Celui nous intéressant le plus dans le cadre de ce TER est que pour certains objets,
+il est impossible d'obtenir une représentation exacte. C'est le cas lorsque la surface de l'objet ne peut être représentée par un ensemble de triangles.
+Par exemple, il est impossible de représenter une sphère de façon exacte sous forme de maillage. Les maillages représentant de tels objets sont des
+approximations.\\
+En conséquence, plus on désire un maillage précis, plus celui-ci contiendra de triangles. Un maillage plus complexe a un coût
+plus important en mémoire, et en temps lors du rendu. Au delà d'une certaine précision, la représentation par maillage n'est plus viable
+en terme de performances. 
+
+% todo : chiffres, images
+
+Il apparaît donc nécessaire de disposer de techniques permettant de représenter les détails d'un objet plus
+efficacement qu'en augmentant la précision de son maillage.

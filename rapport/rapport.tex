@@ -1,0 +1,45 @@
+\documentclass[12pt,twoside]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage[ampersand]{easylist}
+\usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+\begin{document}
+\title{
+    {TER --- Rapport final}\\
+    {Visualisation rapide de modèles 3D complexes à partir de textures projectives de profondeur}\\
+    {\includegraphics[width=12cm]{logo-uds-couleur.pdf}}\\ % also works with logo.pdf
+    {Encadré par Rémi Allègre}
+}
+\author{Robin Chavignat}
+\date{8 mai 2016}
+\maketitle
+\renewcommand*\contentsname{Table des matières}
+\tableofcontents
+
+\chapter{Préambule}
+
+\input{chapters/preambule}
+
+\pagebreak
+
+\chapter{Problématique}
+
+\input{chapters/problematique}
+
+\pagebreak
+
+\chapter{Technique}
+
+\input{chapters/technique}
+
+\pagebreak
+
+\bibliographystyle{plain-fr}
+\bibliography{rapport}
+\end{document}

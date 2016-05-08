@@ -1,0 +1,40 @@
+De nombreuses techniques ont été développées pour répondre à ce besoin. On peut par exemple citer le normal mapping,
+ou le displacement mapping. Les techniques que nous allons étudier appartiennent à la catégorie des algorithmes de
+rendu à partir d'images, ou image-based rendering.\\
+
+\section{Vue d'ensemble}
+La méthode étudiée dans le cadre de ce TER est basée sur la technique de View-Dependent Texture Mapping (VDTM).
+Le VDTM a été décrit en premier par Debevec et al~\cite{Debevec96}. Il consiste, à partir d'un maillage
+approximatif de l'objet et d'un ensemble de prises de vues, à déterminer quels polygones sont visibles à partir
+de chaque point de vue. Pour un point P de l'objet et pour une position de caméra donnée, on peut ensuite déterminer si P
+est visible grâce aux informations de visibilité calculées précédemment. Si P est visible, sa couleur est déterminée
+par une combinaison des couleurs de P dans les points de vue ou P est visible. Un défaut notable du VDTM est
+que l'interpolation de couleurs entre les points de vue à tendance à causer des artefacts.
+
+La technique que nous étudions comble cette dernière faiblesse du VDTM, tout en utilisant un prétraitement bien plus simples.
+\'Etant donnés un maillage simplifié et un ensemble de points de vue, pour une position donnée de la caméra, on détermine pour tout pixel
+quel est le point de vue fournissant la meilleure vue parmi un sous-ensemble de points de vue proches. On extrait ensuite
+du point de vue les informations de couleur et de profondeur nécessaires à l'écriture du fragment. Ceci conduit à une
+reconstruction approchée de l'objet original au dessus du maillage approximatif.
+
+\section{Données}
+Dans le cadre de la technique que nous étudions, les données nécessaires au rendu sont un maillage simplifié, les points de vue,
+consistant en la donnée de 3 images, une carte de profondeur (z-buffer), une carte de normales, et une carte de couleurs, ainsi
+que la matrice de projection de la caméra ayant capturé le point de vue.\\
+Nous ne rentrerons pas dans les détails de la génération du maillage simplifié. De nombreux algorithmes permettent d'accomplir
+cette tâche, comme par exemple ceux décrits par \cite{Hoppe96} et \cite{Garland97}. Les logiciels Blender ou Meshlab permettent
+tous deux de générer le maillage simplifié à partir du maillage original, en spécifiant le degré de simplification, e.g 1\% du nombre
+de triangles original.\\
+Le prétraitement se limite à l'aquisition des points de vue, et peut se faire manuellement en naviguant autour de l'objet et en s'assurant
+que l'ensemble de la surface est couverte. Nous décrivons plus tard des pistes envisagées pour automatiser l'étape d'aquisition des points de vue.
+
+\section{Reprojection}
+La technique VDTM et celle étudiée dans le cadre de ce TER sont toutes les deux basées sur l'utilisation de textures
+projectives de profondeur, et sur le principe de reprojection suivant~:\\
+Etant donné une caméra $C$ et la carte de profondeur associée à l'objet vu de $C$.
+Soient $P = (x_P, y_P, z_P)$ un point sur la surface de l'objet, et $(u_P, v_P)$ les coordonnées du pixel correspondant
+à $P$ dans la caméra $C$. Alors, le point $P_C = (u_P, v_P, z_P)$ avec $z_P$ extrait de la carte de pronfondeur, correspond à $P$
+dans l'espace de la caméra $C$. Connaissant $M_C$ la matrice de projection de la caméra $C$, alors on a $P = M_C^{-1} * P_C$.
+
+\section{Algorithme}
+
