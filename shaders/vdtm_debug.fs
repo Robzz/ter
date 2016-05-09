@@ -31,16 +31,15 @@ void main() {
           d3 = distance(p3, vs_pos_object_space);
     gl_FragDepth = gl_FragCoord.z;
     if(d1 < d2 && d1 < d3) {
-        gl_FragColor = texture2D(colorTex1, pov1);
+        gl_FragColor = vec4(gl_FragDepth, 0, 0, 1);
         //gl_FragDepth = z1;
     }
     else if(d2 < d1 && d2 < d3) {
-        gl_FragColor = texture2D(colorTex2, pov2);
+        gl_FragColor = vec4(0, gl_FragDepth, 0, 1);
         //gl_FragDepth = z2;
     }
     else {
-        gl_FragColor = texture2D(colorTex3, pov3);
+        gl_FragColor = vec4(0, 0, gl_FragDepth, 1);
         //gl_FragDepth = z3;
     }
 }
-

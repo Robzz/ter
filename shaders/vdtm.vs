@@ -5,14 +5,31 @@
 in vec4 v_position;
 in vec3 v_normal;
 
+uniform mat4 m_camToClip;
+uniform mat4 m_objToCamera;
+uniform mat4 m_viewpoint1, m_viewpoint2, m_viewpoint3; 
+
+out PovTexCoords {
+    vec2 pov1;
+    vec2 pov2;
+    vec2 pov3;
+};
+out vec4 vs_pos_object_space;
 out vec3 vs_normal;
 
-uniform mat4 m_camera;
-uniform mat4 m_world;
-uniform mat4 m_proj;
-uniform mat3 m_normalTransform;
+vec2 pos_to_uv(vec4 p, mat4 m) {
+    p = m * p;
+    p = p / p.w;
+    vec2 r = p.xy;
+    r = r/2 + 0.5;
+    return r;
+}
 
 void main() {
-    gl_Position = m_proj * m_camera * m_world * v_position;
-    vs_normal = m_normalTransform * v_normal;
+    vs_pos_object_space = v_position;
+    gl_Position = m_camToClip * m_objToCamera * v_position;
+    vs_normal = v_normal;
+    pov1 = pos_to_uv(v_position, m_viewpoint1);
+    pov2 = pos_to_uv(v_position, m_viewpoint2);
+    pov3 = pos_to_uv(v_position, m_viewpoint3);
 }
