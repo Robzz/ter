@@ -4,6 +4,8 @@
 \usepackage{amsmath}
 \usepackage[ampersand]{easylist}
 \usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}
+\usepackage{url}
+\usepackage{hyperref}
 
 \usepackage{graphicx}
 \graphicspath{ {images/} }
@@ -12,8 +14,11 @@
 \pagestyle{fancy}
 
 \usepackage{titlesec}
-\titleformat{\chapter}[display]
-    {\normalfont\bfseries}{}{0pt}{\Large}
+\titleformat{\chapter}
+    {\Large\bfseries} % format
+    {}                % label
+    {0pt}             % sep
+    {\huge}           % before-code}<++>
 
 \begin{document}
 \title{
@@ -26,7 +31,6 @@
 \date{8 mai 2016}
 \maketitle
 \renewcommand*\contentsname{Table des matières}
-\renewcommand{\chaptername}{}
 \tableofcontents
 
 \chapter{Préambule}

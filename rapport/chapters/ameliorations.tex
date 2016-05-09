@@ -1,8 +1,8 @@
-Nous avons vu que la méthode fonctionne, mais également qu'elle présente quelques défauts. Voici mes pistes d'amélioration.
+Nous avons vu que la méthode fournit de bons résultats, mais également qu'elle présente quelques défauts. Voici mes pistes d'amélioration.
 Mon implémentation n'étant pas fonctionnelle, il ne s'agit que de pistes, n'ayant pas été explorées.
 
 \section{\'Elimination des occlusions}
-Une amélioration possible serait un traitement permettant de rechercher des points/surfaces non couvertes par l'ensemble de points de vue
+Une amélioration possible serait un traitement permettant de rechercher des points / surfaces non ou mal couvertes par l'ensemble de points de vue
 et souffrant du phénomène d'occlusion. Il serait ensuite possible de compléter l'ensemble par de nouveaux points de vue assurant une
 meilleure visibilité de ces surfaces.
 
@@ -15,10 +15,10 @@ Une des améliorations de la méthode sur la technique VDTM est la simplificatio
 suffit de générer un maillage simplifié et de procéder a l'aquisition des points de vue. Cependant, cette dernière
 partie requiert l'intervention de l'utilisateur. On se pose donc la question de comment automatiser ce traitement.\\
 Une méthode naïve consisterait à construire un paramètrage de l'espace décrivant un ensemble de points servant de centres de projection
-pour la capture des points de vue. On peut par exemple orienter la caméra vers le point de la surface le plus proche. Un exemple trivial
+pour la capture des points de vue. Il reste à orienter la caméra, par exemple vers le point de la surface le plus proche. Un exemple trivial
 d'un tel paramétrage serait la sphère englobante de l'objet.\\
-Cette méthode demande cependant à être affinée, car le nombre de points de vue en résultant peut devenir grand, et un critère d'orientation
-peut donner de mauvais résultats.
+Cette méthode demande cependant à être affinée, car le nombre de points de vue en résultant peut devenir grand, et un paramétrage ou un critère d'orientation
+mal choisis peuvent donner de mauvais résultats.
 
 \section{Elimination des points de vue redondants}
 L'automatisation de l'aquisition risque dans tous les cas de générer un grand nombre de points de vue. Un algorithme
@@ -28,7 +28,10 @@ peut se présenter ainsi~:
 
 On cherche à associer à chaque point de vue de l'ensemble un coût, quantifiant la perte d'information causée par la suppression du point de vue.
 La première étape est de déterminer pour chaque point de vue $V_i$ les régions de l'espace dans lesquelles placer le centre de projection de la caméra
-provoquera l'utilisation de $V_i$ par la méthode. Il s'agit de l'ensemble des points $P$ tels que \[\forall{}j,k,i\neq{}j,i\neq{}k, d(P,V_i) < d(P,V_j) \text{ ou } d(P,V_i) < d(P,V_k)\]
+provoquera l'utilisation de $V_i$ par la méthode. Du fait qu'on utilise les trois points de vue les plus proches du centre de projection,
+il résulte que qu'il s'agit de l'ensemble des points $P$ tels que \[\forall{}j,k,i\neq{}j,i\neq{}k, d(P,O_i) < d(P,O_j) \text{ ou } d(P,O_i) < d(P,O_k)\]
+En d'autres termes, il s'agit de l'ensemble des points de la cellule de $O_i$ dans le diagramme de Voronoi en 3 dimensions des centres de projection des
+points de vue.\\
 On peut ensuite pour chacune de ces régions déterminer quel point de vue serait sélectionné à la place de $V_i$ s'il était supprimé de l'ensemble.
 Il reste ensuite à faire un rendu dans les 2 cas, puis à quantifier la perte d'information d'un cas à l'autre, par rapport au rendu de référence.
-Il est envisageable de répéter ce procédé tant que la perte ne dépasse pas un certain seuil.
+Il est envisageable de répéter ce procédé tant que la perte ne dépasse pas un certain seuil. Cette méthode n'est cependant probablement pas optimale.

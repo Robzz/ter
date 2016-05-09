@@ -1,5 +1,5 @@
 De nombreuses techniques ont été développées pour répondre à ce besoin. On peut par exemple citer le normal mapping,
-ou le displacement mapping. Les techniques que nous allons étudier appartiennent à la catégorie des algorithmes de
+le displacement mapping, ou encore le bump mapping. Les techniques que nous allons étudier appartiennent à la catégorie des algorithmes de
 rendu à partir d'images, ou \emph{image-based rendering}.\\
 
 \section{Vue d'ensemble}
@@ -63,7 +63,7 @@ de vue. \`A partir de l'équation~\ref{eq:reprojection}, on obtient~:
     P_i=M_{C_i}\times{}P'
 \end{equation}\label{ssec:choix}
 \subsection{Sélection du meilleur point de vue}
-Il reste ensuite à déterminer quel point de vue est la meilleure approximation de $P$. Pour cela, il suffit d'extraire pour chaque point de vue $V_i$ la
+Il reste ensuite à déterminer quel point de vue nous donne la meilleure approximation de $P$. Pour cela, il suffit d'extraire de la carte de profondeur pour chaque point de vue $V_i$ la
 distance $z_i$ du centre de projection $O_i$ au point $P_i$, projeté de $P'$ dans $V_i$, i.e. $P_i=(u_i, v_i, z_i)$. On peut ainsi calculer la distance entre $P'$
 et chaque $P_i$. On considère que le point $P_i$ le plus proche de $P'$ est la meilleure approximation de $P$. La situation du choix entre 2 points de vue est
 illustrée par la figure 3.2. Finalement, on peut récupérer les informations des cartes de couleur, profondeur et normales du point choisi pour approximer $P$,
@@ -91,7 +91,8 @@ comptant 1\% du nombre de triangles du maillage original, la totalité des donn�
 \subsection{Temps de rendu}
 L'implémentation n'étant pas fonctionelle, les chiffres sont tirés de~\cite{SG05}: une scène composée de 15 millions de triangles (15 Bouddhas) est affichée
 à 2.21 images par seconde. La méthode appliquée à cette scène permet de diviser le nombre de triangles par 100 et de passer à 140 000 triangles, tout en
-affichant la scène à 66.73 images par seconde. D'autres exemples montrent des améliorations de performances du même ordre de magnitude.
+affichant la scène à 66.73 images par seconde. D'autres exemples montrent des améliorations de performances du même ordre de magnitude, d'un facteur allant de 20 à 30,
+pour un maillage 99\% moins dense.
 
 \subsection{Qualité des rendus}
 \begin{figure}\label{fig:qualite}
@@ -113,5 +114,5 @@ facilement l'observer dans la zone entourée en jaune.
 Il ressort de l'étude que cette méthode permet un gain de performance intéressant pour les rendus de géométries suffisamment
 complexes, au prix d'une légère perte de précision. La technique est de plus relativement simple et l'implémentation
 s'appuie sur des fonctionnalités présentes sur virtuellement tous les matériels disponibles aujourd'hui. Cela en fait une
-méthode particulièrement intéressantes pour les applications où le rendu doit être fait en temps réel et où une légère perte
+méthode particulièrement intéressante pour les applications où le rendu doit être fait en temps réel et où une légère perte
 de qualité est acceptable.
