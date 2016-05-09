@@ -1,17 +1,17 @@
 De nombreuses techniques ont été développées pour répondre à ce besoin. On peut par exemple citer le normal mapping,
 ou le displacement mapping. Les techniques que nous allons étudier appartiennent à la catégorie des algorithmes de
-rendu à partir d'images, ou image-based rendering.\\
+rendu à partir d'images, ou \emph{image-based rendering}.\\
 
 \section{Vue d'ensemble}
-La méthode étudiée dans le cadre de ce TER est basée sur la technique de View-Dependent Texture Mapping (VDTM).
+La méthode étudiée dans le cadre de ce TER est basée sur la technique de \emph{View-Dependent Texture Mapping} (VDTM).
 Le VDTM a été décrit en premier par Debevec et al~\cite{Debevec96}. Il consiste, à partir d'un maillage
 approximatif de l'objet et d'un ensemble de prises de vues, à déterminer quels polygones sont visibles à partir
-de chaque point de vue. Pour un point P de l'objet et pour une position de caméra donnée, on peut ensuite déterminer si P
-est visible grâce aux informations de visibilité calculées précédemment. Si P est visible, sa couleur est déterminée
-par une combinaison des couleurs de P dans les points de vue ou P est visible. Un défaut notable du VDTM est
+de chaque point de vue. Pour un point $P$ de l'objet et pour une position de caméra donnée, on peut ensuite déterminer si $P$
+est visible grâce aux informations de visibilité calculées précédemment. Si $P$ est visible, sa couleur est déterminée
+par une combinaison des couleurs de $P$ dans les points de vue ou $P$ est visible. Un défaut notable du VDTM est
 que l'interpolation de couleurs entre les points de vue à tendance à causer des artefacts.
 
-La technique que nous étudions comble cette dernière faiblesse du VDTM, tout en utilisant un prétraitement bien plus simples.
+La technique que nous étudions comble cette dernière faiblesse du VDTM, tout en utilisant un prétraitement bien plus simple.
 \'Etant donnés un maillage simplifié et un ensemble de points de vue, pour une position donnée de la caméra, on détermine pour tout pixel
 quel est le point de vue fournissant la meilleure vue parmi un sous-ensemble de points de vue proches. On extrait ensuite
 du point de vue les informations de couleur et de profondeur nécessaires à l'écriture du fragment. Ceci conduit à une
@@ -19,22 +19,99 @@ reconstruction approchée de l'objet original au dessus du maillage approximatif
 
 \section{Données}
 Dans le cadre de la technique que nous étudions, les données nécessaires au rendu sont un maillage simplifié, les points de vue,
-consistant en la donnée de 3 images, une carte de profondeur (z-buffer), une carte de normales, et une carte de couleurs, ainsi
+consistant en la donnée de 3 images, une carte de profondeur (\emph{z-buffer}), une carte de normales, et une carte de couleurs, ainsi
 que la matrice de projection de la caméra ayant capturé le point de vue.\\
 Nous ne rentrerons pas dans les détails de la génération du maillage simplifié. De nombreux algorithmes permettent d'accomplir
-cette tâche, comme par exemple ceux décrits par \cite{Hoppe96} et \cite{Garland97}. Les logiciels Blender ou Meshlab permettent
+cette tâche, comme par exemple ceux décrits par~\cite{Hoppe96} et~\cite{Garland97}. Les logiciels Blender ou Meshlab permettent
 tous deux de générer le maillage simplifié à partir du maillage original, en spécifiant le degré de simplification, e.g 1\% du nombre
 de triangles original.\\
 Le prétraitement se limite à l'aquisition des points de vue, et peut se faire manuellement en naviguant autour de l'objet et en s'assurant
 que l'ensemble de la surface est couverte. Nous décrivons plus tard des pistes envisagées pour automatiser l'étape d'aquisition des points de vue.
 
 \section{Reprojection}
+\begin{figure}~\label{fig:reproj}
+    \caption{Reprojection}
+    \centering
+    \includegraphics[scale=0.5]{reproj.png}
+\end{figure}
 La technique VDTM et celle étudiée dans le cadre de ce TER sont toutes les deux basées sur l'utilisation de textures
 projectives de profondeur, et sur le principe de reprojection suivant~:\\
 Etant donné une caméra $C$ et la carte de profondeur associée à l'objet vu de $C$.
 Soient $P = (x_P, y_P, z_P)$ un point sur la surface de l'objet, et $(u_P, v_P)$ les coordonnées du pixel correspondant
-à $P$ dans la caméra $C$. Alors, le point $P_C = (u_P, v_P, z_P)$ avec $z_P$ extrait de la carte de pronfondeur, correspond à $P$
-dans l'espace de la caméra $C$. Connaissant $M_C$ la matrice de projection de la caméra $C$, alors on a $P = M_C^{-1} * P_C$.
+à $P$ dans la caméra $C$ (voir fig. 3.1). Alors, le point $P_C = (u_P, v_P, z_P)$ avec $z_P$ extrait de la carte de pronfondeur, correspond à $P$
+dans l'espace de la caméra $C$. Connaissant $M_C$ la matrice de projection de la caméra $C$, alors on a~:
+\begin{equation}~\label{eq:reprojection}
+    P = M_C^{-1}\times{}P_C
+\end{equation}
 
 \section{Algorithme}
+On cherche à appliquer la méthode pour dessiner une approximation de l'objet représenté par le maillage $M$, étant donnés un maillage
+simplifié $M'$ et un ensemble de points de vue, le centre de projection de la caméra étant situé en $O$.
 
+\begin{figure}\label{fig:occlu}
+    \centering
+    \caption{Choix du meilleur point de vue et occlusions}
+    \includegraphics{images/occlusion.pdf}
+\end{figure}
+\subsection{Tri des points de vue}\label{ssec:tri}
+La première étape du rendu est de déterminer le sous ensemble de points de vue à utiliser. Pour cela, on trie les points de vue selon
+la distance entre leurs centres de projection $O_k$ respectifs et $O$, et on choisit les 3 plus proches, notés $V_1$, $V_2$ et $V_3$.
+\subsection{Reprojection}\label{ssec:proj}
+Pour chaque point $P'$ de $M'$ approximation d'un point $P$ de l'objet, il faut ensuite déterminer les coordonnées projectives $(u_i, v_i)$ dans l'espace des caméras de chaque point
+de vue. \`A partir de l'équation~\ref{eq:reprojection}, on obtient~:
+\begin{equation}
+    P_i=M_{C_i}\times{}P'
+\end{equation}\label{ssec:choix}
+\subsection{Sélection du meilleur point de vue}
+Il reste ensuite à déterminer quel point de vue est la meilleure approximation de $P$. Pour cela, il suffit d'extraire pour chaque point de vue $V_i$ la
+distance $z_i$ du centre de projection $O_i$ au point $P_i$, projeté de $P'$ dans $V_i$, i.e. $P_i=(u_i, v_i, z_i)$. On peut ainsi calculer la distance entre $P'$
+et chaque $P_i$. On considère que le point $P_i$ le plus proche de $P'$ est la meilleure approximation de $P$. La situation du choix entre 2 points de vue est
+illustrée par la figure 3.2. Finalement, on peut récupérer les informations des cartes de couleur, profondeur et normales du point choisi pour approximer $P$,
+puis écrire la profondeur du fragment et calculer sa couleur, e.g par le modèle de Phong.
+
+\section{Implémentation}
+L'implémentation est réalisée en C++ et OpenGL3.3.\\
+L'opération décrite en~\ref{ssec:tri} est effectuée par le CPU avant le rendu. Celle décrite en~\ref{ssec:proj} est effectuée au niveau du vertex shader,
+et finalement,~\ref{ssec:choix} est effectué par le fragment shader.
+Malheureusement, ayant mal géré mon temps et sous-estimé la t\^ache, mon implémentation n'est pas fonctionelle.
+
+\begin{figure}\label{fig:fail}
+    \centering
+    \caption{Implémentation défaillante}
+    \includegraphics[scale=0.4]{images/fail_transparent.png}
+\end{figure}
+
+\section{Evaluation}
+\subsection{Mémoire}
+Le rendu par cette méthode peut être plus efficace en termes de consommation mémoire que le rendu du maillage détaillé. En effet, le nombre de points
+de vue requis, bien que dépendant de l'objet, est relativement faible. Par exemple, le maillage du Bouddha, de l'université de Stanford, occupe 80Mo de mémoire.
+En utilisant une dizaine de points de vue, et en stockant les textures à une résolution de 512$\times$512, avec un z-buffer de 16 bits, et un maillage
+comptant 1\% du nombre de triangles du maillage original, la totalité des données occupe environ 20Mo.
+
+\subsection{Temps de rendu}
+L'implémentation n'étant pas fonctionelle, les chiffres sont tirés de~\cite{SG05}: une scène composée de 15 millions de triangles (15 Bouddhas) est affichée
+à 2.21 images par seconde. La méthode appliquée à cette scène permet de diviser le nombre de triangles par 100 et de passer à 140 000 triangles, tout en
+affichant la scène à 66.73 images par seconde. D'autres exemples montrent des améliorations de performances du même ordre de magnitude.
+
+\subsection{Qualité des rendus}
+\begin{figure}\label{fig:qualite}
+    \centering
+    \caption{Qualité des rendus. \`A gauche, le maillage original (1,5M triangles). \`A droite, l'application de la méthode.}
+    \includegraphics[scale=0.5]{images/qualite.pdf}
+\end{figure}
+L'implémentation ne fonctionnant pas, le visuel est tiré de~\cite{SG05}. On constate que le rendu est d'une qualité fidèle à l'original.
+On peut néanmoins remarquer 2 défauts~:
+\begin{easylist}[itemize]
+& Des occlusions par endroit, lorsque l'erreur commise par la méthode est trop importante, et que le pixel dessiné approxime
+en fait un point différent de la surface. Ces occlusions peuvent être limitées par une augmentation de la couverture de la
+surface par les points de vue. Les zones encerclées en vert sur la figure sont affectées.
+& De plus, des défauts sont présents sur les bords de l'objet, où l'on distingue la géométrie du maillage simplifié. On peut
+facilement l'observer dans la zone entourée en jaune.
+\end{easylist}
+
+\subsection{Conclusions}
+Il ressort de l'étude que cette méthode permet un gain de performance intéressant pour les rendus de géométries suffisamment
+complexes, au prix d'une légère perte de précision. La technique est de plus relativement simple et l'implémentation
+s'appuie sur des fonctionnalités présentes sur virtuellement tous les matériels disponibles aujourd'hui. Cela en fait une
+méthode particulièrement intéressantes pour les applications où le rendu doit être fait en temps réel et où une légère perte
+de qualité est acceptable.

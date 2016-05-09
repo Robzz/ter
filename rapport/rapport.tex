@@ -4,10 +4,16 @@
 \usepackage{amsmath}
 \usepackage[ampersand]{easylist}
 \usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}
+
 \usepackage{graphicx}
 \graphicspath{ {images/} }
+
 \usepackage{fancyhdr}
 \pagestyle{fancy}
+
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+    {\normalfont\bfseries}{}{0pt}{\Large}
 
 \begin{document}
 \title{
@@ -20,25 +26,24 @@
 \date{8 mai 2016}
 \maketitle
 \renewcommand*\contentsname{Table des matières}
+\renewcommand{\chaptername}{}
 \tableofcontents
 
 \chapter{Préambule}
 
 \input{chapters/preambule}
 
-\pagebreak
-
 \chapter{Problématique}
 
 \input{chapters/problematique}
-
-\pagebreak
 
 \chapter{Technique}
 
 \input{chapters/technique}
 
-\pagebreak
+\chapter{Améliorations}
+
+\input{chapters/ameliorations}
 
 \bibliographystyle{plain-fr}
 \bibliography{rapport}
