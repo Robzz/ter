@@ -20,3 +20,13 @@ Le dépôt est composé de plusieurs applications :
 * Dépendances du moteur
 * Boost
   * serialize
+
+## Utilisation
+```
+git pull https://github.com/robzz/ter
+cd ter
+git submodule init 
+git submodule update
+cmake .
+make
+```
