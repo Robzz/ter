@@ -4,7 +4,7 @@ project(TER CXX)
 
 find_package(Boost 1.58 REQUIRED serialization)
 
-add_subdirectory(troll_engine)
+add_subdirectory(engine)
 add_definitions(-DGLM_SWIZZLE)
 
 set(CAPTURE_HEADERS include/pov.h)
@@ -23,6 +23,6 @@ add_executable(vdtm ${VDTM_SOURCES} ${VDTM_HEADERS})
 target_link_libraries(capture TrollEngine ${TrollEngine_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(capture_archive_debug TrollEngine ${TrollEngine_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(vdtm TrollEngine ${TrollEngine_LIBRARIES} ${Boost_LIBRARIES})
-set_property(TARGET capture PROPERTY CXX_STANDARD 11)
-set_property(TARGET capture_archive_debug PROPERTY CXX_STANDARD 11)
-set_property(TARGET vdtm PROPERTY CXX_STANDARD 11)
+set_property(TARGET capture PROPERTY CXX_STANDARD 14)
+set_property(TARGET capture_archive_debug PROPERTY CXX_STANDARD 14)
+set_property(TARGET vdtm PROPERTY CXX_STANDARD 14)
