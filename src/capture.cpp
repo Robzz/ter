@@ -99,12 +99,6 @@ int main(int argc, char** argv) {
         glDebugMessageCallback(&gl_cb, nullptr);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, true);
 
-        FreeImage_SetOutputMessage([] (FREE_IMAGE_FORMAT fif, const char *message) {
-                if(fif != FIF_UNKNOWN) {
-                std::cerr << "Format : " << FreeImage_GetFormatFromFIF(fif) << std::endl;
-                }
-                std::cerr << (message) << std::endl; });
-
         window.track_fps(false);
         std::cout << window.context_info() << std::endl;
         window.showCursor(false);
@@ -147,7 +141,7 @@ int main(int argc, char** argv) {
         //camera.look_at(glm::vec3(0, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
         camera.translate_local(Direction::Back, 1);
         SceneGraph scene;
-        auto buddha = mesh->instantiate(glm::mat4(1), &prog_phong, nullptr, GL_UNSIGNED_SHORT);
+        auto buddha = mesh->instantiate(glm::mat4(1), &prog_phong, nullptr, GL_TRIANGLES);
         scene.addChild(buddha);
 
         Program* current_prog = &prog_phong;
