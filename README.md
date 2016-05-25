@@ -8,7 +8,7 @@ Le dépôt est composé de plusieurs applications :
   * Rotation autour de l'objet : souris
   * Déplacement : ZQSD (horizontal), RF (vertical)
   * Zoom : +/-
-  * Enregistrer un point de vue : A
+  * Capturer un point de vue : A
   * Enregistrer l'ensemble de points de vue : E
   * Quitter : &lt;ESC&gt;
 * vdtm : application de la technique de view-dependent texture mapping à partir
@@ -17,7 +17,7 @@ Le dépôt est composé de plusieurs applications :
 
 ## Dépendances
 
-* Dépendances du moteur
+* Dépendances du [moteur](https://github.com/robzz/troll_engine)
 * Boost
   * serialize
 
